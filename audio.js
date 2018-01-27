@@ -1,24 +1,23 @@
 var audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-let audioBuffer;
-const audioUrl = 'https://ia600504.us.archive.org/6/items/HowGreatThouArt_466/HowGreatThouArtWorshipVideoWithLyrics.mp3';
 var clicked = false;
 var chunks = [];
-
-var merger = new ChannelMergerNode(audioContext, mergerOptions);
-
 var button = document.querySelector("button");
 button.disabled = true;
 
-let backgroundMusic = audioContext.createBufferSource();
-
+// setup merger flow
+var recDestination = audioContext.createMediaStreamDestination();
+var mediaRecorder = new MediaRecorder(recDestination.stream);
 var mergerOptions = {
   numberOfInputs : 2
 };
+var merger = new ChannelMergerNode(audioContext, mergerOptions);
+merger.connect(recDestination);
 
-var recDestination = audioContext.createMediaStreamDestination();
-var mediaRecorder = new MediaRecorder(recDestination.stream);
-
+// setup music source stuff and connect to merger
+const audioUrl = 'https://ia600504.us.archive.org/6/items/HowGreatThouArt_466/HowGreatThouArtWorshipVideoWithLyrics.mp3';
+let audioBuffer;
+let backgroundMusic = audioContext.createBufferSource();
 window.fetch(audioUrl)
   .then(response => response.arrayBuffer())
   .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
@@ -28,11 +27,7 @@ window.fetch(audioUrl)
     backgroundMusic.connect(merger);
   });
 
-var errorCallback = function(e) {
-  console.log('something happened :( ', e);
-};
-
-// connect user microphone data
+// connect user microphone data to merger
 navigator.getUserMedia({audio: true}, function(stream) {
   var microphone = audioContext.createMediaStreamSource(stream);
   var filter = audioContext.createBiquadFilter();
@@ -42,7 +37,9 @@ navigator.getUserMedia({audio: true}, function(stream) {
   filter.connect(merger);
 }, errorCallback);
 
-merger.connect(recDestination);
+var errorCallback = function(e) {
+  console.log('something happened :( ', e);
+};
 
 // button stuff
 button.addEventListener("click", function(e) {
